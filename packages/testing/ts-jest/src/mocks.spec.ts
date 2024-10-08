@@ -8,6 +8,7 @@ interface TestInterface {
   someBool: boolean;
   optional: string | undefined;
   func: (num: number, str: string) => boolean;
+  func3: () => Promise<{ prop: number }>;
 }
 
 class TestClass {
@@ -176,6 +177,26 @@ describe('Mocks', () => {
       expect(httpArgsHost.getRequest).toBeCalledTimes(1);
     });
 
+    it('nested properties can be implictly casted to string', () => {
+      const mock = createMock<{ nested: any }>();
+
+      const testFnNumber = () => mock.nested > 0;
+      const testFnString = () => `${mock.nested}`;
+
+      expect(testFnNumber).not.toThrowError();
+      expect(testFnString).not.toThrowError();
+    });
+    it('mocked functions returned values can be implictly casted to string', async () => {
+      const mock = createMock<TestInterface>();
+      const result = await mock.func3();
+
+      const testFnNumber = () => result.prop > 0;
+      const testFnString = () => `${result.prop}`;
+
+      expect(testFnNumber).not.toThrowError();
+      expect(testFnString).not.toThrowError();
+    });
+
     it('should automock promises so that they are awaitable', async () => {
       type TypeWithPromiseReturningFunctions = {
         doSomethingAsync: () => Promise<number>;
@@ -278,8 +299,9 @@ describe('Mocks', () => {
       }).compile();
 
       mockedProvider = module.get<DeepMocked<ExecutionContext>>(diToken);
-      dependentProvider =
-        module.get<{ dependent: () => string }>(dependentToken);
+      dependentProvider = module.get<{ dependent: () => string }>(
+        dependentToken,
+      );
     });
 
     it('should correctly resolve mocked providers', async () => {
@@ -290,7 +312,7 @@ describe('Mocks', () => {
       mockedProvider.switchToHttp.mockReturnValueOnce(
         createMock<HttpArgumentsHost>({
           getRequest: () => request,
-        })
+        }),
       );
 
       const mockResult = mockedProvider.switchToHttp().getRequest();
